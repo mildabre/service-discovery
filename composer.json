@@ -1,0 +1,16 @@
+{
+  "name": "mildabre/service-discovery",
+  "description": "Attribute based service discovery for Nette DI.",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Mildabre\\ServiceDiscovery\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=8.1",
+    "nette/di": "^3.1",
+    "nette/schema": "^1.2"
+  }
+}
