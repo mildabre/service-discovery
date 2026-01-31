@@ -1,6 +1,7 @@
 {
   "name": "mildabre/service-discovery",
   "description": "Attribute based service discovery for Nette DI.",
+  "keywords": ["nette", "di", "service", "service discovery"],
   "type": "library",
   "license": "MIT",
   "authors": [
