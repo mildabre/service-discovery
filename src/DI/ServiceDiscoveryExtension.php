@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Mildabre\ServiceDiscovery\DI;
 
 use Bite\Exceptions\NotFound\FileNotFoundException;
+use Mildabre\ServiceDiscovery\Attributes\AsEventListener;
 use Mildabre\ServiceDiscovery\Attributes\AsService;
 use Mildabre\ServiceDiscovery\Attributes\EnableInject;
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
@@ -21,6 +22,7 @@ use ReflectionException;
 final class ServiceDiscoveryExtension extends CompilerExtension
 {
     private const string CacheFolder = '/service-discovery';
+    public const string TagEventListener = 'event.listener';
 
     public function getConfigSchema(): Schema
     {
@@ -52,16 +54,27 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             $attribute = $rc->getAttributes(AsService::class)[0] ?? null;
             if ($attribute) {
                 $instance = $attribute->newInstance();
-                $definition = $builder->addDefinition($instance->name)->setType($class);
-                $definitions[] = [$rc, $definition];
+                $def = $builder->addDefinition($instance->name)
+                    ->setType($class);
+                $definitions[] = [$rc, $def];
+                continue;
+            }
+
+            $attribute = $rc->getAttributes(AsEventListener::class)[0] ?? null;
+            if ($attribute) {
+                $def = $builder->addDefinition(null)
+                    ->setType($class)
+                    ->addTag(self::TagEventListener);
+                $definitions[] = [$rc, $def];
                 continue;
             }
 
             foreach ($config->extends as $type) {
                 if ($rc->isSubclassOf($type)) {
                     $name = null;
-                    $definition = $builder->addDefinition($name)->setType($class);
-                    $definitions[] = [$rc, $definition];
+                    $def = $builder->addDefinition($name)
+                        ->setType($class);
+                    $definitions[] = [$rc, $def];
                     continue 2;
                 }
             }
@@ -69,20 +82,21 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             foreach ($config->implements as $interface) {
                 if ($rc->implementsInterface($interface)) {
                     $name = null;
-                    $definition = $builder->addDefinition($name)->setType($class);
-                    $definitions[] = [$rc, $definition];
+                    $def = $builder->addDefinition($name)
+                        ->setType($class);
+                    $definitions[] = [$rc, $def];
                     continue 2;
                 }
             }
         }
 
-        foreach ($definitions as [$rc, $definition]) {
+        foreach ($definitions as [$rc, $def]) {
             if ($this->hasAttribute($rc, EnableInject::class)) {
-                $definition->addTag(InjectExtension::TagInject, true);
+                $def->addTag(InjectExtension::TagInject, true);
             }
 
             if ($rc->getAttributes(NoAutowire::class)) {
-                $definition->setAutowired(false);
+                $def->setAutowired(false);
             }
         }
     }
