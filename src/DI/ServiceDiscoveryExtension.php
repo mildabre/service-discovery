@@ -18,7 +18,6 @@ use Nette\Schema\Schema;
 use ReflectionClass;
 use ReflectionException;
 
-
 final class ServiceDiscoveryExtension extends CompilerExtension
 {
     private const string CacheFolder = '/service-discovery';
