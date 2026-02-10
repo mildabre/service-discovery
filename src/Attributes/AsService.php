@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Mildabre\ServiceDiscovery\Attributes;
 
 use Attribute;
-use Nette\InvalidArgumentException;
+use InvalidArgumentException;
 
 #[Attribute(Attribute::TARGET_CLASS)]
 class AsService
