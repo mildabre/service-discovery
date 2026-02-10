@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Mildabre\ServiceDiscovery\DI;
 
-use Bite\Exceptions\NotFound\FileNotFoundException;
 use Mildabre\ServiceDiscovery\Attributes\AsEventListener;
 use Mildabre\ServiceDiscovery\Attributes\AsService;
 use Mildabre\ServiceDiscovery\Attributes\EnableInject;
@@ -17,6 +16,7 @@ use Nette\Schema\Expect;
 use Nette\Schema\Schema;
 use ReflectionClass;
 use ReflectionException;
+use RuntimeException;
 
 final class ServiceDiscoveryExtension extends CompilerExtension
 {
@@ -106,7 +106,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
         foreach ($dirs as $dir) {
             if (!is_dir($dir)) {
-                throw new FileNotFoundException("Discovery directory '$dir' does not exists.");
+                throw new RuntimeException("Discovery directory '$dir' does not exists.");
             }
 
             $loader->addDirectory($dir);
