@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Mildabre\ServiceDiscovery\DI;
 
+use LogicException;
 use Mildabre\ServiceDiscovery\Attributes\AsEventListener;
 use Mildabre\ServiceDiscovery\Attributes\AsService;
 use Mildabre\ServiceDiscovery\Attributes\EnableInject;
@@ -28,6 +29,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         return Expect::structure([
             'in' => Expect::arrayOf('string')->default([]),
             'type' => Expect::arrayOf('string')->default([]),
+            'enableInject' => Expect::arrayOf('string')->default([]),
         ]);
     }
 
@@ -45,7 +47,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 continue;
             }
 
-            if ($rc->isAbstract() || $rc->getAttributes(Excluded::class) || $rc->isInterface() || $builder->findByType($class)) {
+            if ($rc->isAbstract() || $rc->isInterface() || $rc->getAttributes(Excluded::class) || $builder->findByType($class)) {
                 continue;
             }
 
@@ -80,6 +82,14 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
 
         foreach ($definitions as [$rc, $def]) {
+
+            foreach ($config->enableInject as $type) {
+                $isInterface = interface_exists($type);
+                if ($isInterface  && $rc->implementsInterface($type) || !$isInterface && $rc->isSubclassOf($type)) {
+                    $def->addTag(InjectExtension::TagInject, true);
+                }
+            }
+
             if ($this->hasAttribute($rc, EnableInject::class)) {
                 $def->addTag(InjectExtension::TagInject, true);
             }
