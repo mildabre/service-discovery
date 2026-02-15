@@ -7,5 +7,5 @@ namespace Mildabre\ServiceDiscovery\Attributes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_CLASS)]
-class AsEventListener
+class EventListener
 {}
