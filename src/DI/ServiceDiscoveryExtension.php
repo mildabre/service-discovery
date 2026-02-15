@@ -20,8 +20,8 @@ use RuntimeException;
 
 final class ServiceDiscoveryExtension extends CompilerExtension
 {
-    private const string CacheFolder = '/service-discovery';
-    public const string TagEventListener = 'event.listener';
+    private const CacheFolder = '/service-discovery';
+    public const TagEventListener = 'event.listener';
 
     public function getConfigSchema(): Schema
     {
