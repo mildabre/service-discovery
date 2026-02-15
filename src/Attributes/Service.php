@@ -8,7 +8,7 @@ use Attribute;
 use InvalidArgumentException;
 
 #[Attribute(Attribute::TARGET_CLASS)]
-class AsService
+class Service
 {
     public function __construct(public readonly ?string $name = null)
     {
