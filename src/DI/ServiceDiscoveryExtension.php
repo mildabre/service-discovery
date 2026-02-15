@@ -27,8 +27,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
     {
         return Expect::structure([
             'in' => Expect::arrayOf('string')->default([]),
-            'extends' => Expect::arrayOf('string')->default([]),
-            'implements' => Expect::arrayOf('string')->default([]),
+            'type' => Expect::arrayOf('string')->default([]),
         ]);
     }
 
@@ -68,18 +67,9 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 continue;
             }
 
-            foreach ($config->extends as $type) {
-                if ($rc->isSubclassOf($type)) {
-                    $name = null;
-                    $def = $builder->addDefinition($name)
-                        ->setType($class);
-                    $definitions[] = [$rc, $def];
-                    continue 2;
-                }
-            }
-
-            foreach ($config->implements as $interface) {
-                if ($rc->implementsInterface($interface)) {
+            foreach ($config->type as $type) {
+                $isInterface = interface_exists($type);
+                if ($isInterface  && $rc->implementsInterface($type) || !$isInterface && $rc->isSubclassOf($type)) {
                     $name = null;
                     $def = $builder->addDefinition($name)
                         ->setType($class);
@@ -122,12 +112,11 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
     private function hasAttribute(ReflectionClass $rc, string $attribute): bool
     {
-        while ($rc) {
+        do {
             if ($rc->getAttributes($attribute)) {
                 return true;
             }
-            $rc = $rc->getParentClass();
-        }
+        } while ($rc = $rc->getParentClass());
 
         return false;
     }
