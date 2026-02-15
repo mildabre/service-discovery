@@ -7,5 +7,8 @@ namespace Mildabre\ServiceDiscovery\Attributes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_CLASS)]
-class NoAutowire
-{}
+class Autowire
+{
+    public function __construct(public readonly bool $enabled = true)
+    {}
+}

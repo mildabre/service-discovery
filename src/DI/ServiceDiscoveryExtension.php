@@ -8,7 +8,7 @@ use Mildabre\ServiceDiscovery\Attributes\AsEventListener;
 use Mildabre\ServiceDiscovery\Attributes\AsService;
 use Mildabre\ServiceDiscovery\Attributes\EnableInject;
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
-use Mildabre\ServiceDiscovery\Attributes\NoAutowire;
+use Mildabre\ServiceDiscovery\Attributes\Autowire;
 use Nette\DI\CompilerExtension;
 use Nette\DI\Extensions\InjectExtension;
 use Nette\Loaders\RobotLoader;
@@ -84,8 +84,9 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 $def->addTag(InjectExtension::TagInject, true);
             }
 
-            if ($rc->getAttributes(NoAutowire::class)) {
-                $def->setAutowired(false);
+            $autowireAttribute = $rc->getAttributes(Autowire::class)[0] ?? null;
+            if ($autowireAttribute) {
+                $def->setAutowired($autowireAttribute->newInstance()->enabled);
             }
         }
     }
