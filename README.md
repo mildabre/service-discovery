@@ -18,6 +18,7 @@ Installation
 composer require mildabre/service-discovery
 ```
 
+
 Configuration
 -------------
 
@@ -27,6 +28,7 @@ Register the extension in your `common.neon`:
 extensions:
     discovery: Mildabre\ServiceDiscovery\DI\ServiceDiscoveryExtension
 ```
+
 
 Usage
 -----
@@ -57,13 +59,11 @@ use Mildabre\ServiceDiscovery\Attributes\Service;
 
 #[Service]
 class UserRepository        # Registered as auto-generated service name
-{
-}
+{}
 
 #[Service('user.repository')]
 class UserRepository        # Registered with custom name 'user.repository'
-{
-}
+{}
 ```
 
 #### #[EventListener] - Event Listener Service Registration
@@ -77,8 +77,7 @@ use Mildabre\ServiceDiscovery\Attributes\EventListener;
 class UserRegisteredListener
 {
     public function handle(UserRegisteredEvent $event): void      #  handle event
-    {
-    }
+    {}
 }
 ```
 
@@ -126,9 +125,9 @@ use Mildabre\ServiceDiscovery\Attributes\Autowire;
 
 #[Service, Autowire(false)]     # registered but not autowired, must be referenced explicitly
 class DebugService
-{ 
-}
+{}
 ```
+
 
 Migration from Search Section
 -----------------------------
@@ -162,12 +161,10 @@ use App\Controls\Abstract\AbstractControl;
 use Nette\Application\UI\Control;
 
 class DebugService implements AsService                             # pseudo-interface
-{ 
-}
+{}
 
 class AbstractControl extends Control implements Injectable          # pseudo-interface
-{ 
-}
+{}
 ```
 
 **After:**
@@ -194,32 +191,12 @@ use App\Controls\Abstract\AbstractControl;
 use Nette\Application\UI\Control;
 
 class DebugService                             # pseudo-interface removed
-{ 
-}
+{}
 
 class AbstractControl extends Control          # pseudo-interface removed
-{ 
-}
+{}
 ```
 
-
-Samples
--------
-
-### Selective Excluding
-
-You can combine configuration-based discovery with attributes:
-
-```neon
-discovery:
-    in:
-        - %appDir%/Controls
-        
-    type:
-        - App\Controls\Abstract\AbstractControl
-```
-
-Then use `#[Excluded]` on specific classes you don't want registered.
 
 Requirements
 ------------
@@ -228,6 +205,7 @@ Requirements
 - Nette DI 3.1+
 - Nette Schema 1.2+
 - Nette RobotLoader 4.0+
+
 
 License
 -------
