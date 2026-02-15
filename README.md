@@ -99,7 +99,7 @@ class ShiftControl extends AbstractControl    # Not registered despite matching 
     {}
 }
 ```
-Class excluded from auto-registration can be instantiated via constructor manually, without controversial setter.
+Class excluded from auto-registration can still be instantiated manually via constructor, without relying on setter injection.
 
 Manually-registered services in services.neon are not affected by the attribute!
 
