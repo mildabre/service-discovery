@@ -113,11 +113,17 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
     private function hasAttribute(ReflectionClass $rc, string $attribute): bool
     {
-        do {
+        while ($rc) {
             if ($rc->getAttributes($attribute)) {
+                if ($rc->isAbstract()) {
+                    throw new LogicException(sprintf("%s, attribute '%s' cannot be used on abstract class.", $rc->name, $attribute));
+                }
+
                 return true;
             }
-        } while ($rc = $rc->getParentClass());
+
+            $rc = $rc->getParentClass();
+        };
 
         return false;
     }
