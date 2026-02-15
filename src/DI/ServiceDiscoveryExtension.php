@@ -90,10 +90,6 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 }
             }
 
-            if ($this->hasAttribute($rc, EnableInject::class)) {
-                $def->addTag(InjectExtension::TagInject, true);
-            }
-
             $autowireAttribute = $rc->getAttributes(Autowire::class)[0] ?? null;
             if ($autowireAttribute) {
                 $def->setAutowired($autowireAttribute->newInstance()->enabled);
