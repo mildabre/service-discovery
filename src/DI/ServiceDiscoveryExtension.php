@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Mildabre\ServiceDiscovery\DI;
 
 use LogicException;
-use Mildabre\ServiceDiscovery\Attributes\AsEventListener;
-use Mildabre\ServiceDiscovery\Attributes\AsService;
-use Mildabre\ServiceDiscovery\Attributes\EnableInject;
+use Mildabre\ServiceDiscovery\Attributes\EventListener;
+use Mildabre\ServiceDiscovery\Attributes\Service;
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
 use Mildabre\ServiceDiscovery\Attributes\Autowire;
 use Nette\DI\CompilerExtension;
@@ -51,7 +50,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 continue;
             }
 
-            $attribute = $rc->getAttributes(AsService::class)[0] ?? null;
+            $attribute = $rc->getAttributes(Service::class)[0] ?? null;
             if ($attribute) {
                 $instance = $attribute->newInstance();
                 $def = $builder->addDefinition($instance->name)
@@ -60,7 +59,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 continue;
             }
 
-            $attribute = $rc->getAttributes(AsEventListener::class)[0] ?? null;
+            $attribute = $rc->getAttributes(EventListener::class)[0] ?? null;
             if ($attribute) {
                 $def = $builder->addDefinition(null)
                     ->setType($class)
