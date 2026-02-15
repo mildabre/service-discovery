@@ -33,7 +33,7 @@ extensions:
 Usage
 -----
 
-### Discovery by Type
+### Service Discovery by Type
 
 Define discovery rules in your  `service.neon`:
 
@@ -50,25 +50,23 @@ discovery:
 
 All classes in `%appDir%/Controls` and `%appDir%/Model` matching these criteria will be automatically registered.
 
-### Discovery by Attribute
-
-#### #[Service] - Register as Anonymous or Named Service
+### Service Discovery by Attribute
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\Service;
 
 #[Service]
-class UserRepository        # Registered as auto-generated service name
+class UserRepository                # Registered with auto-generated service name
 {}
 
 #[Service('user.repository')]
-class UserRepository        # Registered with custom name 'user.repository'
+class UserRepository                # Registered with custom name 'user.repository'
 {}
 ```
 
-#### #[EventListener] - Event Listener Service Registration
+### Event Listener Service Discovery by Attribute
 
-Works with `mildabre/event-dispatcher` package:
+Works with [`mildabre/event-dispatcher`](https://github.com/mildabre/event-dispatcher).  package:
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\EventListener;
@@ -81,16 +79,16 @@ class UserRegisteredListener
 }
 ```
 
-Services with this attribute are automatically tagged with `event.listener` tag and added by `mildabre/event-dispatcher extension` to EventDispatcher.
+Services with this attribute are automatically tagged with `event.listener` tag and added by `mildabre/event-dispatcher` to EventDispatcher.
 
-#### #[Excluded] - Exclude from Discovery
+### Exclude Service from Discovery
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
 use App\Model\Abstract\ModelInterface;
 
 #[Excluded]
-class ShiftControl extends AbstractControl    # Not registered despite matching discovery rules
+class ShiftControl extends AbstractControl      # Not registered despite matching discovery rules
 {
     public function __construct(
         private readonly $model ModelInterface,
@@ -100,7 +98,7 @@ class ShiftControl extends AbstractControl    # Not registered despite matching 
 ```
 Class excluded from auto-registration can still be instantiated manually via constructor, without relying on setter injection.
 
-Manually-registered services in services.neon are not affected by the attribute!
+Important: Manually-registered services in services.neon are not affected by the attribute!
 
 
 ### Enable Inject mode
@@ -112,12 +110,14 @@ discovery:
         - %appDir%/Model
         
     enableInject:
-        - App\Controls\Abstract\AbstractControl       # base class
+        - App\Controls\Abstract\AbstractControl         # base class
         - App\Model\Abstract\ModelInterface             # interface
 ```
 
 
-#### #[Autowire] - Disable Autowiring
+### Disable Autowiring
+
+Use id you really need it. Attribute #[Autowire] has boolean parameter $enabled with default value true. By setting $enabled = false the service cannot be autowired by type by other service.
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\Service;
@@ -201,7 +201,7 @@ class AbstractControl extends Control          # pseudo-interface removed
 Requirements
 ------------
 
-- PHP 8.3 or higher
+- PHP 8.1 or higher
 - Nette DI 3.1+
 - Nette Schema 1.2+
 - Nette RobotLoader 4.0+
