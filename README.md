@@ -18,7 +18,6 @@ Installation
 composer require mildabre/service-discovery
 ```
 
-
 Configuration
 -------------
 
@@ -29,11 +28,8 @@ extensions:
     discovery: Mildabre\ServiceDiscovery\DI\ServiceDiscoveryExtension
 ```
 
-
-Usage
------
-
-### Service Discovery by Type
+Service Discovery by Type
+-------------------------
 
 Define discovery rules in your  `service.neon`:
 
@@ -50,7 +46,8 @@ discovery:
 
 All classes in `%appDir%/Controls` and `%appDir%/Model` matching these criteria will be automatically registered.
 
-### Service Discovery by Attribute
+Service Discovery by Attribute
+------------------------------
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\Service;
@@ -64,9 +61,10 @@ class UserRepository                # Registered with custom name 'user.reposito
 {}
 ```
 
-### Event Listener Service Discovery by Attribute
+Event Listener Discovery by Attribute
+-------------------------------------
 
-Works with [`mildabre/event-dispatcher`](https://github.com/mildabre/event-dispatcher).  package:
+Require [`mildabre/event-dispatcher`](https://github.com/mildabre/event-dispatcher).  package.
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\EventListener;
@@ -81,7 +79,8 @@ class UserRegisteredListener
 
 Services with this attribute are automatically tagged with `event.listener` tag and added by `mildabre/event-dispatcher` to EventDispatcher.
 
-### Exclude Service from Discovery
+Exclude Service from Discovery
+------------------------------
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
@@ -101,7 +100,8 @@ Class excluded from auto-registration can still be instantiated manually via con
 Important: Manually-registered services in services.neon are not affected by the attribute!
 
 
-### Enable Inject mode
+Enable Inject mode
+------------------
 
 ```neon
 discovery:
@@ -115,7 +115,8 @@ discovery:
 ```
 
 
-### Disable Autowiring
+Disable Autowiring
+------------------
 
 Use id you really need it. Attribute #[Autowire] has boolean parameter $enabled with default value true. By setting $enabled = false the service cannot be autowired by type by other service.
 
