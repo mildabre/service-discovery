@@ -6,7 +6,6 @@ namespace Mildabre\ServiceDiscovery\DI;
 
 use LogicException;
 use Mildabre\ServiceDiscovery\Attributes\EventListener;
-use Mildabre\ServiceDiscovery\Attributes\Lazy;
 use Mildabre\ServiceDiscovery\Attributes\Service;
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
 use Mildabre\ServiceDiscovery\Attributes\Autowire;
@@ -77,10 +76,8 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             }
 
             foreach ($config->type as $type) {
-                $isInterface = interface_exists($type);
-                if ($isInterface  && $rc->implementsInterface($type) || !$isInterface && $rc->isSubclassOf($type)) {
-                    $name = null;
-                    $def = $builder->addDefinition($name)
+                if ($this->isClassOfType($rc, $type)) {
+                    $def = $builder->addDefinition(null)
                         ->setType($class);
                     $definitions[] = [$rc, $def];
                     continue 2;
@@ -90,25 +87,31 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
         foreach ($definitions as [$rc, $def]) {
             $this->applyInject($rc, $def, $config);
-            $this->applyLazy($rc, $def, $config);
+            $this->applyLazyByType($rc, $def, $config);
+            $this->applyLazyByAttribute($rc, $def);
             $this->applyAutowire($rc, $def);
         }
     }
 
-    private function applyLazy(ReflectionClass $rc, ServiceDefinition $def, object $config): void
+    private function applyLazyByAttribute(ReflectionClass $rc, ServiceDefinition $def): void
     {
+        $attribute = $rc->getAttributes(Service::class)[0] ?? null;
+        if (!$attribute) {
+            return;
+        }
+
         if (PHP_VERSION_ID < 80400) {
             return;
         }
 
-        $attribute = $this->getAttribute($rc, Lazy::class);
-        $enabled = $attribute?->newInstance()->enabled;
-
-        if ($enabled !== null) {
-            $def->lazy = $enabled;
-            return;
+        $instance = $attribute->newInstance();
+        if ($instance->lazy !== null) {
+            $def->lazy = $instance->lazy;
         }
+    }
 
+    private function applyLazyByType(ReflectionClass $rc, ServiceDefinition $def, object $config): void
+    {
         foreach ($config->lazy as $type) {
             if ($this->isClassOfType($rc, $type)) {
                 $def->lazy = true;
