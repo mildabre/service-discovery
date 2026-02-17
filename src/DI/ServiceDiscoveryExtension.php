@@ -6,14 +6,17 @@ namespace Mildabre\ServiceDiscovery\DI;
 
 use LogicException;
 use Mildabre\ServiceDiscovery\Attributes\EventListener;
+use Mildabre\ServiceDiscovery\Attributes\Lazy;
 use Mildabre\ServiceDiscovery\Attributes\Service;
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
 use Mildabre\ServiceDiscovery\Attributes\Autowire;
 use Nette\DI\CompilerExtension;
+use Nette\DI\Definitions\ServiceDefinition;
 use Nette\DI\Extensions\InjectExtension;
 use Nette\Loaders\RobotLoader;
 use Nette\Schema\Expect;
 use Nette\Schema\Schema;
+use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionException;
 use RuntimeException;
@@ -29,6 +32,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             'in' => Expect::arrayOf('string')->default([]),
             'type' => Expect::arrayOf('string')->default([]),
             'enableInject' => Expect::arrayOf('string')->default([]),
+            'lazy' => Expect::arrayOf('string')->default([]),
         ]);
     }
 
@@ -37,6 +41,10 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         $builder = $this->getContainerBuilder();
         $config = $this->getConfig();
         $definitions = [];
+
+        if ($config->lazy && PHP_VERSION_ID < 80400) {
+            throw new LogicException(self::class . ", configured lazy creation requires PHP 8.4 or newer. You are running " . PHP_VERSION);
+        }
 
         foreach ($this->searchClasses($config->in) as $class) {
             try {
@@ -81,19 +89,55 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
 
         foreach ($definitions as [$rc, $def]) {
+            $this->applyInject($rc, $def, $config);
+            $this->applyLazy($rc, $def, $config);
+            $this->applyAutowire($rc, $def);
+        }
+    }
 
-            foreach ($config->enableInject as $type) {
-                $isInterface = interface_exists($type);
-                if ($isInterface  && $rc->implementsInterface($type) || !$isInterface && $rc->isSubclassOf($type)) {
-                    $def->addTag(InjectExtension::TagInject, true);
-                }
-            }
+    private function applyLazy(ReflectionClass $rc, ServiceDefinition $def, object $config): void
+    {
+        if (PHP_VERSION_ID < 80400) {
+            return;
+        }
 
-            $autowireAttribute = $rc->getAttributes(Autowire::class)[0] ?? null;
-            if ($autowireAttribute) {
-                $def->setAutowired($autowireAttribute->newInstance()->enabled);
+        $attribute = $this->getAttribute($rc, Lazy::class);
+        $enabled = $attribute?->newInstance()->enabled;
+
+        if ($enabled !== null) {
+            $def->lazy = $enabled;
+            return;
+        }
+
+        foreach ($config->lazy as $type) {
+            if ($this->isClassOfType($rc, $type)) {
+                $def->lazy = true;
+                break;
             }
         }
+    }
+
+    private function applyInject(ReflectionClass $rc, ServiceDefinition $def, object $config): void
+    {
+        foreach ($config->enableInject as $type) {
+            if ($this->isClassOfType($rc, $type)) {
+                $def->addTag(InjectExtension::TagInject, true);
+            }
+        }
+    }
+
+    private function applyAutowire(ReflectionClass $rc, ServiceDefinition $def): void
+    {
+        $attribute = $this->getAttribute($rc, Autowire::class);
+        if ($attribute) {
+            $def->setAutowired($attribute->newInstance()->enabled);
+        }
+    }
+
+    private function isClassOfType(ReflectionClass $rc, string $type): bool
+    {
+        $isInterface = interface_exists($type);
+        return $isInterface && $rc->implementsInterface($type) || !$isInterface && $rc->isSubclassOf($type);
     }
 
     private function searchClasses(array $dirs): array
@@ -116,20 +160,21 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         return array_keys($loader->getIndexedClasses());
     }
 
-    private function hasAttribute(ReflectionClass $rc, string $attribute): bool
+    private function getAttribute(ReflectionClass $rc, string $class): ?ReflectionAttribute
     {
         while ($rc) {
-            if ($rc->getAttributes($attribute)) {
+            $attributes = $rc->getAttributes($class);
+            if ($attributes) {
                 if ($rc->isAbstract()) {
-                    throw new LogicException(sprintf("%s, attribute '%s' cannot be used on abstract class.", $rc->name, $attribute));
+                    throw new LogicException(sprintf("%s, attribute '%s' cannot be used on abstract class.", $rc->name, $class));
                 }
 
-                return true;
+                return $attributes[0] ?? null;
             }
 
             $rc = $rc->getParentClass();
         };
 
-        return false;
+        return null;
     }
 }
