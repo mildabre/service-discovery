@@ -10,7 +10,10 @@ use InvalidArgumentException;
 #[Attribute(Attribute::TARGET_CLASS)]
 class Service
 {
-    public function __construct(public readonly ?string $name = null)
+    public function __construct(
+        public readonly ?string $name = null,
+        public readonly ?bool $lazy = null,
+    )
     {
         if ($this->name === '') {
             throw new InvalidArgumentException("Empty string is not valid service name.");
