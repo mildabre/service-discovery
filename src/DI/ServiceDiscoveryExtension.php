@@ -95,12 +95,12 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
     private function applyLazyByAttribute(ReflectionClass $rc, ServiceDefinition $def): void
     {
-        $attribute = $rc->getAttributes(Service::class)[0] ?? null;
-        if (!$attribute) {
+        if (PHP_VERSION_ID < 80400) {
             return;
         }
 
-        if (PHP_VERSION_ID < 80400) {
+        $attribute = $rc->getAttributes(Service::class)[0] ?? null;
+        if (!$attribute) {
             return;
         }
 
