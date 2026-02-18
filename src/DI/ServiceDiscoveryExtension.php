@@ -31,7 +31,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             'in' => Expect::arrayOf('string')->default([]),
             'type' => Expect::arrayOf('string')->default([]),
             'enableInject' => Expect::arrayOf('string')->default([]),
-            'lazy' => Expect::arrayOf('string')->default([]),
+            'lazy' => Expect::bool()->required(),
         ]);
     }
 
@@ -79,6 +79,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 if ($this->isClassOfType($rc, $type)) {
                     $def = $builder->addDefinition(null)
                         ->setType($class);
+                    $def->lazy = $config->lazy;
                     $definitions[] = [$rc, $def];
                     continue 2;
                 }
@@ -86,16 +87,15 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
 
         foreach ($definitions as [$rc, $def]) {
+            $this->applyLazy($rc, $def, $config);
             $this->applyInject($rc, $def, $config);
-            $this->applyLazyByType($rc, $def, $config);
-            $this->applyLazyByAttribute($rc, $def);
             $this->applyAutowire($rc, $def);
         }
     }
 
-    private function applyLazyByAttribute(ReflectionClass $rc, ServiceDefinition $def): void
+    private function applyLazy(ReflectionClass $rc, ServiceDefinition $def, object $config): void
     {
-        if (PHP_VERSION_ID < 80400) {
+        if (!$config->lazy) {
             return;
         }
 
@@ -104,27 +104,14 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             return;
         }
 
-        $instance = $attribute->newInstance();
-        if ($instance->lazy !== null) {
-            $def->lazy = $instance->lazy;
-        }
-    }
-
-    private function applyLazyByType(ReflectionClass $rc, ServiceDefinition $def, object $config): void
-    {
-        foreach ($config->lazy as $type) {
-            if ($this->isClassOfType($rc, $type)) {
-                $def->lazy = true;
-                break;
-            }
-        }
+        $def->lazy = $attribute->newInstance()->lazy;
     }
 
     private function applyInject(ReflectionClass $rc, ServiceDefinition $def, object $config): void
     {
         foreach ($config->enableInject as $type) {
             if ($this->isClassOfType($rc, $type)) {
-                $def->addTag(InjectExtension::TagInject, true);
+                $def->addTag(InjectExtension::TagInject);
             }
         }
     }
