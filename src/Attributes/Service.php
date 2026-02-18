@@ -12,7 +12,7 @@ class Service
 {
     public function __construct(
         public readonly ?string $name = null,
-        public readonly ?bool $lazy = null,
+        public readonly bool $lazy = true,
     )
     {
         if ($this->name === '') {
