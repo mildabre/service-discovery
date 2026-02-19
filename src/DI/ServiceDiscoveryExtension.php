@@ -25,6 +25,11 @@ final class ServiceDiscoveryExtension extends CompilerExtension
     private const CacheFolder = '/service-discovery';
     public const TagEventListener = 'event.listener';
 
+    /**
+     * @var list<list<ReflectionClass, ServiceDefinition>>
+     */
+    private array $definitions = [];
+
     public function getConfigSchema(): Schema
     {
         return Expect::structure([
@@ -91,6 +96,8 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             $this->applyInject($rc, $def, $config);
             $this->applyAutowire($rc, $def);
         }
+
+        $this->definitions = $definitions;
     }
 
     private function applyLazy(ReflectionClass $rc, ServiceDefinition $def, object $config): void
@@ -166,5 +173,21 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         };
 
         return null;
+    }
+
+    /**
+     * @return list<ReflectionClass>
+     */
+    public function getServices(): array
+    {
+        return array_values(
+            array_map(
+                fn(array $definitionData) => $definitionData[0],
+                array_filter(
+                    $this->definitions,
+                    fn(array $definitionData) => $definitionData[1] instanceof ServiceDefinition
+                )
+            )
+        );
     }
 }
