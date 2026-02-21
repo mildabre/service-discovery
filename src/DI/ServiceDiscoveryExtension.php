@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Mildabre\ServiceDiscovery\DI;
 
 use LogicException;
+use Mildabre\ServiceDiscovery\Attributes\Autowire;
 use Mildabre\ServiceDiscovery\Attributes\EventListener;
 use Mildabre\ServiceDiscovery\Attributes\Service;
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
-use Mildabre\ServiceDiscovery\Attributes\Autowire;
 use Nette\DI\CompilerExtension;
 use Nette\DI\Definitions\ServiceDefinition;
 use Nette\DI\Extensions\InjectExtension;
@@ -22,13 +22,18 @@ use RuntimeException;
 
 final class ServiceDiscoveryExtension extends CompilerExtension
 {
-    private const CacheFolder = '/service-discovery';
+    private const CacheFolder = '/cache/mildabre.serviceDiscovery';
+    public const RobotLoaderCacheSubFolder = '/robotLoader';
     public const TagEventListener = 'event.listener';
 
     /**
-     * @var list<list<ReflectionClass, ServiceDefinition>>
+     * @var list<array{ReflectionClass, ServiceDefinition}>
      */
     private array $definitions = [];
+
+    private static bool $hooked = false;
+
+    private static ?string $currentMtimeHash = null;
 
     public function getConfigSchema(): Schema
     {
@@ -43,6 +48,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
     public function loadConfiguration(): void
     {
         $builder = $this->getContainerBuilder();
+        $tempDir = $builder->parameters['tempDir'];
         $config = $this->getConfig();
         $definitions = [];
 
@@ -50,7 +56,19 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             throw new LogicException(self::class . ", configured lazy creation requires PHP 8.4 or newer. You are running " . PHP_VERSION);
         }
 
-        foreach ($this->searchClasses($config->in) as $class) {
+        if (!self::$hooked) {
+            throw new LogicException("Missing hook in 'Bootstrap.php', add before createContainer(): ServiceDiscoveryExtension::checkAndInvalidate(\$tempDir);\n");
+        }
+
+        $checker = new MetadataChecker($tempDir, self::CacheFolder);
+
+        [$classes, $indexedClasses] = $this->searchClasses($config->in, $tempDir);
+
+        $mtimeHash = self::$currentMtimeHash ?? $checker->computeMtimeHash($config->in);
+        $attrSnapshot = $checker->computeAttrSnapshot($indexedClasses);
+        $checker->saveSnapshot($config->in, $mtimeHash, $attrSnapshot['attrData'], $attrSnapshot['attrHash']);
+
+        foreach ($classes as $class) {
             try {
                 $rc = new ReflectionClass($class);
 
@@ -137,7 +155,10 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         return $isInterface && $rc->implementsInterface($type) || !$isInterface && $rc->isSubclassOf($type);
     }
 
-    private function searchClasses(array $dirs): array
+    /**
+     * @return array{list<string>, array<string, string>} [classes, indexedClasses]
+     */
+    private function searchClasses(array $dirs, string $tempDir): array
     {
         $loader = new RobotLoader;
 
@@ -149,12 +170,11 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             $loader->addDirectory($dir);
         }
 
-        $builder = $this->getContainerBuilder();
-        $tempDir = $builder->parameters['tempDir'] . self::CacheFolder;
-        $loader->setTempDirectory($tempDir);
+        $loader->setTempDirectory($tempDir . self::CacheFolder . self::RobotLoaderCacheSubFolder);
         $loader->rebuild();
 
-        return array_keys($loader->getIndexedClasses());
+        $indexedClasses = $loader->getIndexedClasses();             // [className => path]
+        return [array_keys($indexedClasses), $indexedClasses];
     }
 
     private function getAttribute(ReflectionClass $rc, string $class): ?ReflectionAttribute
@@ -170,7 +190,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             }
 
             $rc = $rc->getParentClass();
-        };
+        }
 
         return null;
     }
@@ -180,14 +200,19 @@ final class ServiceDiscoveryExtension extends CompilerExtension
      */
     public function getServices(): array
     {
-        return array_values(
-            array_map(
-                fn(array $definitionData) => $definitionData[0],
-                array_filter(
-                    $this->definitions,
-                    fn(array $definitionData) => $definitionData[1] instanceof ServiceDefinition
-                )
-            )
-        );
+        $result = [];
+        foreach ($this->definitions as [$rc, $def]) {
+            if ($def instanceof ServiceDefinition) {
+                $result[] = $rc;
+            }
+        }
+        return $result;
+    }
+
+    public static function checkAndInvalidate(string $tempDir): void
+    {
+        $checker = new MetadataChecker($tempDir, self::CacheFolder);
+        self::$currentMtimeHash = $checker->check();
+        self::$hooked = true;
     }
 }
