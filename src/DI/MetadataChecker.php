@@ -59,11 +59,15 @@ final class MetadataChecker
                 new RecursiveDirectoryIterator(
                     $dir,
                     FilesystemIterator::SKIP_DOTS
-                )
+                ),
+                RecursiveIteratorIterator::SELF_FIRST
             );
 
             foreach ($iterator as $file) {
-                if ($file->getExtension() === 'php') {
+                if ($file->isDir()) {
+                    $times[$file->getPathname()] = $file->getMTime();
+
+                } elseif ($file->getExtension() === 'php') {
                     $times[$file->getPathname()] = $file->getMTime();
                 }
             }
