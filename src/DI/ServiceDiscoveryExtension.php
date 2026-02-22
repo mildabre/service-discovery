@@ -57,7 +57,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
 
         if (!self::$hooked) {
-            throw new LogicException("Missing hook in 'Bootstrap.php', add before createContainer(): ServiceDiscoveryExtension::checkAndInvalidate(\$tempDir);\n");
+            throw new LogicException("Missing hook in 'Bootstrap.php', add before createContainer(): ServiceDiscoveryExtension::boot(\$tempDir);\n");
         }
 
         $checker = new MetadataChecker($tempDir, self::CacheFolder);
