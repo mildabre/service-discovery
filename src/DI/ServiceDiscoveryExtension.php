@@ -209,7 +209,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         return $result;
     }
 
-    public static function checkAndInvalidate(string $tempDir): void
+    public static function boot(string $tempDir): void
     {
         $checker = new MetadataChecker($tempDir, self::CacheFolder);
         self::$currentMtimeHash = $checker->check();
