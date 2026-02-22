@@ -31,7 +31,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
      */
     private array $definitions = [];
 
-    private static bool $hooked = false;
+    private static bool $booted = false;
 
     private static ?string $currentMtimeHash = null;
 
@@ -56,8 +56,8 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             throw new LogicException(self::class . ", configured lazy creation requires PHP 8.4 or newer. You are running " . PHP_VERSION);
         }
 
-        if (!self::$hooked) {
-            throw new LogicException("Missing hook in 'Bootstrap.php', add before createContainer(): ServiceDiscoveryExtension::boot(\$tempDir);\n");
+        if (!self::$booted) {
+            throw new LogicException("Missing boot in 'Bootstrap.php', add before createContainer(): ServiceDiscoveryExtension::boot(\$tempDir);\n");
         }
 
         $checker = new MetadataChecker($tempDir, self::CacheFolder);
@@ -213,6 +213,6 @@ final class ServiceDiscoveryExtension extends CompilerExtension
     {
         $checker = new MetadataChecker($tempDir, self::CacheFolder);
         self::$currentMtimeHash = $checker->check();
-        self::$hooked = true;
+        self::$booted = true;
     }
 }
