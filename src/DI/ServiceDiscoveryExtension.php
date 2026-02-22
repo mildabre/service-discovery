@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Mildabre\ServiceDiscovery\DI;
 
 use LogicException;
-use Mildabre\ServiceDiscovery\Attributes\Autowire;
 use Mildabre\ServiceDiscovery\Attributes\EventListener;
 use Mildabre\ServiceDiscovery\Attributes\Service;
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
@@ -82,8 +81,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
             $attribute = $rc->getAttributes(Service::class)[0] ?? null;
             if ($attribute) {
-                $instance = $attribute->newInstance();
-                $def = $builder->addDefinition($instance->name)
+                $def = $builder->addDefinition(null)
                     ->setType($class);
                 $definitions[] = [$rc, $def];
                 continue;
@@ -111,8 +109,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
         foreach ($definitions as [$rc, $def]) {
             $this->applyLazy($rc, $def, $config);
-            $this->applyInject($rc, $def, $config);
-            $this->applyAutowire($rc, $def);
+            $this->applyEnableInject($rc, $def, $config);
         }
 
         $this->definitions = $definitions;
@@ -124,28 +121,18 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             return;
         }
 
-        $attribute = $rc->getAttributes(Service::class)[0] ?? null;
-        if (!$attribute) {
-            return;
+        $attribute = $this->getAttribute($rc, Service::class);
+        if ($attribute) {
+            $def->lazy = $attribute->newInstance()->lazy;
         }
-
-        $def->lazy = $attribute->newInstance()->lazy;
     }
 
-    private function applyInject(ReflectionClass $rc, ServiceDefinition $def, object $config): void
+    private function applyEnableInject(ReflectionClass $rc, ServiceDefinition $def, object $config): void
     {
         foreach ($config->enableInject as $type) {
             if ($this->isClassOfType($rc, $type)) {
                 $def->addTag(InjectExtension::TagInject);
             }
-        }
-    }
-
-    private function applyAutowire(ReflectionClass $rc, ServiceDefinition $def): void
-    {
-        $attribute = $this->getAttribute($rc, Autowire::class);
-        if ($attribute) {
-            $def->setAutowired($attribute->newInstance()->enabled);
         }
     }
 
@@ -179,14 +166,18 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
     private function getAttribute(ReflectionClass $rc, string $class): ?ReflectionAttribute
     {
+        $origin = $rc;
         while ($rc) {
             $attributes = $rc->getAttributes($class);
             if ($attributes) {
+                if ($rc->name !== $origin->name) {
+                    throw new LogicException(sprintf("%s, attribute '%s' must be placed directly on the class, not inherited from %s.", $origin->name, $class, $rc->name ));
+                }
                 if ($rc->isAbstract()) {
                     throw new LogicException(sprintf("%s, attribute '%s' cannot be used on abstract class.", $rc->name, $class));
                 }
 
-                return $attributes[0] ?? null;
+                return $attributes[0];
             }
 
             $rc = $rc->getParentClass();
@@ -202,9 +193,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
     {
         $result = [];
         foreach ($this->definitions as [$rc, $def]) {
-            if ($def instanceof ServiceDefinition) {
-                $result[] = $rc;
-            }
+            $result[] = $rc;
         }
         return $result;
     }
