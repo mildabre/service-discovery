@@ -18,6 +18,7 @@ use ReflectionAttribute;
 use ReflectionClass;
 use ReflectionException;
 use RuntimeException;
+use stdClass;
 
 final class ServiceDiscoveryExtension extends CompilerExtension
 {
@@ -48,6 +49,10 @@ final class ServiceDiscoveryExtension extends CompilerExtension
     {
         $builder = $this->getContainerBuilder();
         $tempDir = $builder->parameters['tempDir'];
+
+        /**
+         * @var stdClass $config
+         */
         $config = $this->getConfig();
         $definitions = [];
 
@@ -58,6 +63,8 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         if (!self::$booted) {
             throw new LogicException("Missing boot in 'Bootstrap.php', add before createContainer(): ServiceDiscoveryExtension::boot(\$tempDir);\n");
         }
+
+        $this->validateConfiguration($config);
 
         $checker = new MetadataChecker($tempDir, self::CacheFolder);
 
@@ -75,11 +82,11 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 continue;
             }
 
-            if ($rc->isAbstract() || $rc->isInterface() || $rc->getAttributes(Excluded::class) || $builder->findByType($class)) {
+            if ($rc->isAbstract() || $rc->isInterface() || $this->getAttribute($rc, Excluded::class) || $builder->findByType($class)) {
                 continue;
             }
 
-            $attribute = $rc->getAttributes(Service::class)[0] ?? null;
+            $attribute = $this->getAttribute($rc, Service::class);
             if ($attribute) {
                 $def = $builder->addDefinition(null)
                     ->setType($class);
@@ -87,17 +94,18 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 continue;
             }
 
-            $attribute = $rc->getAttributes(EventListener::class)[0] ?? null;
+            $attribute = $this->getAttribute($rc, EventListener::class);
             if ($attribute) {
                 $def = $builder->addDefinition(null)
                     ->setType($class)
                     ->addTag(self::TagEventListener);
+                $def->lazy = $config->lazy;
                 $definitions[] = [$rc, $def];
                 continue;
             }
 
             foreach ($config->type as $type) {
-                if ($this->isClassOfType($rc, $type)) {
+                if ($rc->isSubclassOf($type)) {
                     $def = $builder->addDefinition(null)
                         ->setType($class);
                     $def->lazy = $config->lazy;
@@ -115,7 +123,48 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         $this->definitions = $definitions;
     }
 
-    private function applyLazy(ReflectionClass $rc, ServiceDefinition $def, object $config): void
+    private function validateConfiguration(stdClass $config): void
+    {
+        foreach ($config->type as $type) {
+            if (interface_exists($type)) {
+                throw new LogicException("Interface '$type' is not allowed in 'serviceDiscovery.type' configuration, use abstract class, or register services manually.");
+            }
+            if (!class_exists($type)) {
+                throw new LogicException(
+                    "Type '$type' in 'serviceDiscovery.type' must be existing class."
+                );
+            }
+        }
+
+        foreach ($config->enableInject as $type) {
+            if (interface_exists($type)) {
+                throw new LogicException("Interface '$type' is not allowed in 'serviceDiscovery.enableInject', use abstract class instead.");
+            }
+            if (!class_exists($type)) {
+                throw new LogicException("Type '$type' in 'serviceDiscovery.enableInject' must be existing class.");
+            }
+        }
+
+        foreach ($config->type as $i => $typeA) {
+
+            bdump([$i, $typeA]);
+
+            foreach ($config->type as $j => $typeB) {
+                if ($i >= $j) {
+                    continue;
+                }
+
+                if (is_subclass_of($typeA, $typeB) || is_subclass_of($typeB, $typeA) || $typeA === $typeB) {
+                    throw new LogicException(sprintf(
+                        "Redundant type in 'serviceDiscovery.type': '%s' is subtype of '%s', remove '%s' - it's already covered by '%s'.",
+                        $typeA, $typeB, $typeA, $typeB
+                    ));
+                }
+            }
+        }
+    }
+
+    private function applyLazy(ReflectionClass $rc, ServiceDefinition $def, stdClass $config): void
     {
         if (!$config->lazy) {
             return;
@@ -127,19 +176,13 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
     }
 
-    private function applyEnableInject(ReflectionClass $rc, ServiceDefinition $def, object $config): void
+    private function applyEnableInject(ReflectionClass $rc, ServiceDefinition $def, stdClass $config): void
     {
         foreach ($config->enableInject as $type) {
-            if ($this->isClassOfType($rc, $type)) {
+                if ($rc->isSubclassOf($type)) {
                 $def->addTag(InjectExtension::TagInject);
             }
         }
-    }
-
-    private function isClassOfType(ReflectionClass $rc, string $type): bool
-    {
-        $isInterface = interface_exists($type);
-        return $isInterface && $rc->implementsInterface($type) || !$isInterface && $rc->isSubclassOf($type);
     }
 
     /**
