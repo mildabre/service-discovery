@@ -23,7 +23,7 @@ use stdClass;
 final class ServiceDiscoveryExtension extends CompilerExtension
 {
     private const CacheFolder = '/cache/mildabre.serviceDiscovery';
-    public const RobotLoaderCacheSubFolder = '/robotLoader';
+    public const CacheSubFolder = '/robotLoader';
     public const TagEventListener = 'event.listener';
 
     /**
@@ -127,11 +127,11 @@ final class ServiceDiscoveryExtension extends CompilerExtension
     {
         foreach ($config->type as $type) {
             if (interface_exists($type)) {
-                throw new LogicException("Interface '$type' is not allowed in 'serviceDiscovery.type' configuration, use abstract class, or register services manually.");
+                throw new LogicException("Interface $type is not allowed in 'serviceDiscovery.type' configuration, use abstract class, or register services manually.");
             }
             if (!class_exists($type)) {
                 throw new LogicException(
-                    "Type '$type' in 'serviceDiscovery.type' must be existing class."
+                    "Type $type in 'serviceDiscovery.type' must be existing class."
                 );
             }
         }
@@ -146,19 +146,21 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
 
         foreach ($config->type as $i => $typeA) {
-
-            bdump([$i, $typeA]);
-
             foreach ($config->type as $j => $typeB) {
                 if ($i >= $j) {
                     continue;
                 }
 
-                if (is_subclass_of($typeA, $typeB) || is_subclass_of($typeB, $typeA) || $typeA === $typeB) {
-                    throw new LogicException(sprintf(
-                        "Redundant type in 'serviceDiscovery.type': '%s' is subtype of '%s', remove '%s' - it's already covered by '%s'.",
-                        $typeA, $typeB, $typeA, $typeB
-                    ));
+                if ($typeA === $typeB) {
+                    throw new LogicException("Duplicate type $typeA in 'serviceDiscovery.type', remove one occurrence");
+                }
+
+                if (is_subclass_of($typeA, $typeB)) {
+                    throw new LogicException("Redundant type $typeA in 'serviceDiscovery.type', it is subtype of $typeB, remove it.");
+                }
+
+                if (is_subclass_of($typeB, $typeA)) {
+                    throw new LogicException("Redundant type $typeB in 'serviceDiscovery.type', it is subtype of $typeA, remove it.");
                 }
             }
         }
@@ -200,7 +202,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             $loader->addDirectory($dir);
         }
 
-        $loader->setTempDirectory($tempDir . self::CacheFolder . self::RobotLoaderCacheSubFolder);
+        $loader->setTempDirectory($tempDir . self::CacheFolder . self::CacheSubFolder);
         $loader->rebuild();
 
         $indexedClasses = $loader->getIndexedClasses();             // [className => path]
