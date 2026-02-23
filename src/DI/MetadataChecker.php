@@ -52,7 +52,7 @@ final class MetadataChecker
         }
 
         $loader = new RobotLoader;
-        $loader->setTempDirectory($this->cacheDir . ServiceDiscoveryExtension::RobotLoaderCacheSubFolder);
+        $loader->setTempDirectory($this->cacheDir . ServiceDiscoveryExtension::CacheSubFolder);
         foreach ($meta['dirs'] as $dir) {
             $loader->addDirectory($dir);                // must be identical with SDE::searchClasses() - for generateCacheKey()
         }
@@ -191,7 +191,10 @@ final class MetadataChecker
 
         foreach ($rc->getAttributes() as $attribute) {
             if (in_array($attribute->getName(), self::WatchedClassAttributes, true)) {
-                $data['class'][] = $attribute->getName();
+                $data['class'][] = [
+                    'name' => $attribute->getName(),
+                    'args' => $attribute->getArguments(),
+                ];
             }
         }
 
