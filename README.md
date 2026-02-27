@@ -8,7 +8,6 @@ Attribute-based service discovery for Nette DI Container.
 
 Simplify your application configuration by automatically discovering and registering services based on:
 - Class type (parent class)
-- Interface implementation  
 - PHP 8 attributes
 
 Installation
@@ -18,6 +17,41 @@ Installation
 composer require mildabre/service-discovery
 ```
 
+Bootstrap hook
+--------------
+
+Add to your `Bootstrap.php`:
+
+```php
+use Bite\DI\BiteExtension;
+use Mildabre\ServiceDiscovery\DI\ServiceDiscoveryExtension;
+use Nette\Bootstrap\Configurator;
+use Nette\DI\Container;
+
+class Bootstrap
+{
+    private Configurator $configurator;
+    private string $rootDir;
+
+    public function __construct()
+    {
+        $this->rootDir = dirname(__DIR__);
+        $this->configurator = new Configurator();
+        $this->configurator->setTempDirectory($this->rootDir.'/temp');
+    }
+
+    public function bootWebApplication(): Container
+    {
+        $this->initializeEnvironment();
+
+        ServiceDiscoveryExtension::boot($this->rootDir.'/temp');    # add this boot hook
+
+        return $this->configurator->createContainer();
+    }
+    
+    // .....
+}
+```
 Configuration
 -------------
 
@@ -81,13 +115,13 @@ Exclude Service from Discovery
 
 ```php
 use Mildabre\ServiceDiscovery\Attributes\Excluded;
-use App\Model\Abstract\ModelInterface;
+use App\Model\Abstract\AbstractModel;
 
-#[Excluded]
-class ShiftControl extends AbstractControl      # Not registered despite matching discovery rules
+#[Excluded]                                     # overrides discovery by-type
+class ShiftControl extends AbstractControl 
 {
     public function __construct(
-        private readonly $model ModelInterface,
+        private readonly $model AbstractModel,
     )
     {}
 }
@@ -181,6 +215,12 @@ class AbstractControl extends Control          # no pseudo-interface
 {}
 ```
 
+Go Event-Driven
+------------
+
+Service Discovery is a natural foundation for event-driven architecture. Pair it with `mildabre/event-dispatcher` — a fresh, modern EventDispatcher designed for PHP 8.4+ that brings new possibilities to well-architected applications. Automatic listener discovery, zero manual wiring, clean separation of concerns. A worthy companion for any modern PHP framework.
+
+[mildabre/event-dispatcher](https://github.com/mildabre/event-dispatcher)
 
 Requirements
 ------------
