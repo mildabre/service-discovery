@@ -61,7 +61,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
 
         if (!self::$booted) {
-            throw new LogicException("Missing boot in 'Bootstrap.php', add before createContainer(): ServiceDiscoveryExtension::boot(\$tempDir);\n");
+            throw new LogicException("Missing extension boot in 'Bootstrap.php', add the boot before createContainer(): according to the README.md");
         }
 
         $this->validateConfiguration($config);
