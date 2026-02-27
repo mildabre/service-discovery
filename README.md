@@ -213,7 +213,7 @@ class AbstractControl extends Control          # no pseudo-interface
 Go Event-Driven
 ------------
 
-Service Discovery is a natural foundation for event-driven architecture. Pair it with `mildabre/event-dispatcher` — a fresh, modern EventDispatcher designed for PHP 8.4+ that brings new possibilities to well-architected applications. Automatic listener discovery, zero manual wiring, clean separation of concerns. A worthy companion for any modern PHP framework.
+Service Discovery is a natural foundation for event-driven architecture. Pair it with `mildabre/event-dispatcher` — a fresh and simple EventDispatcher that brings new possibilities to well-architected applications. Automatic listener discovery, zero manual wiring, clean separation of concerns. A worthy addon for modern Nette-based applications.
 
 [mildabre/event-dispatcher](https://github.com/mildabre/event-dispatcher)
 
