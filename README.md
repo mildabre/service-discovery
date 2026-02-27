@@ -17,16 +17,14 @@ Installation
 composer require mildabre/service-discovery
 ```
 
-Bootstrap hook
+Bootstrap Hook
 --------------
 
-Add to your `Bootstrap.php`:
+Add this hook to your Nette `Bootstrap.php`:
 
 ```php
-use Bite\DI\BiteExtension;
 use Mildabre\ServiceDiscovery\DI\ServiceDiscoveryExtension;
 use Nette\Bootstrap\Configurator;
-use Nette\DI\Container;
 
 class Bootstrap
 {
@@ -43,12 +41,9 @@ class Bootstrap
     public function bootWebApplication(): Container
     {
         $this->initializeEnvironment();
-
-        ServiceDiscoveryExtension::boot($this->rootDir.'/temp');    # add this boot hook
-
+        ServiceDiscoveryExtension::boot($this->rootDir.'/temp');    # add just before $configurator->createContainer()
         return $this->configurator->createContainer();
-    }
-    
+    }  
     // .....
 }
 ```
