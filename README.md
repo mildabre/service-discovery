@@ -28,8 +28,8 @@ extensions:
     discovery: Mildabre\ServiceDiscovery\DI\ServiceDiscoveryExtension
 ```
 
-Service Discovery by Type
--------------------------
+Service Discovery by Class Type
+-------------------------------
 
 Define discovery rules in your  `service.neon`:
 
@@ -40,11 +40,11 @@ discovery:
         - %appDir%/Model
     
     type:
-        - App\Controls\Abstract\AbstractControl       # base class
-        - App\Model\Abstract\ModelInterface             # interface
+        - App\Controls\Abstract\AbstractControl
+        - App\Model\Abstract\AbstractModel
 ```
 
-All classes in `%appDir%/Controls` and `%appDir%/Model` matching these criteria will be automatically registered.
+All classes in `%appDir%/Controls` and `%appDir%/Model` matching these criteria will be automatically registered. Discovery by implementing interfaces is by design not possible.
 
 Service Discovery by Attribute
 ------------------------------
@@ -53,12 +53,9 @@ Service Discovery by Attribute
 use Mildabre\ServiceDiscovery\Attributes\Service;
 
 #[Service]
-class UserRepository                # Registered with auto-generated service name
+class TokenManager                # Registered with auto-generated service name
 {}
 
-#[Service('user.repository')]
-class UserRepository                # Registered with custom name 'user.repository'
-{}
 ```
 
 Event Listener Discovery by Attribute
@@ -100,8 +97,8 @@ Class excluded from auto-registration can still be instantiated manually via con
 Important: Manually-registered services in services.neon are not affected by the attribute!
 
 
-Enable Inject mode
-------------------
+Enable Inject mode by Class Type
+--------------------------------
 
 ```neon
 discovery:
@@ -110,24 +107,10 @@ discovery:
         - %appDir%/Model
         
     enableInject:
-        - App\Controls\Abstract\AbstractControl         # base class
-        - App\Model\Abstract\ModelInterface             # interface
+        - App\Controls\Abstract\AbstractControl
+        - App\Model\Abstract\AbstractModel
 ```
-
-
-Disable Autowiring
-------------------
-
-Use id you really need it. Attribute #[Autowire] has boolean parameter $enabled with default value true. By setting $enabled = false the service cannot be autowired by type by other service.
-
-```php
-use Mildabre\ServiceDiscovery\Attributes\Service;
-use Mildabre\ServiceDiscovery\Attributes\Autowire;
-
-#[Service, Autowire(false)]     # registered but not autowired, must be referenced explicitly
-class DebugService
-{}
-```
+Enable Inject mode by implementing interfaces is by design not possible.
 
 
 Migration from Search Section
@@ -139,18 +122,18 @@ Migration from Search Section
 search:
     application:
         in: %appDir%
-        implements: App\Core\Interfaces\AsService
-
-    model:
-        in: '%appDir%/Model'
-        implements: App\Model\Abstract\ModelInterface   
+        implements: App\Core\Interfaces\AsService       # pseudo-interface
     
     controls:
         in: '%appDir%/Controls'
         extends: App\Controls\Abstract\AbstractControl
+
+    model:
+        in: '%appDir%/Model'
+        implements: App\Model\Abstract\AbstractModel   
     
 decorator:
-    App\Core\Interfaces\Injectable:
+    App\Core\Interfaces\Injectable:                     # pseudo-interface
         inject: true
 ```
 
@@ -161,7 +144,7 @@ use App\Core\Interfaces\Injectable;
 use App\Controls\Abstract\AbstractControl;
 use Nette\Application\UI\Control;
 
-class DebugService implements AsService                             # pseudo-interface
+class TokenService implements AsService                             # pseudo-interface
 {}
 
 class AbstractControl extends Control implements Injectable          # pseudo-interface
@@ -176,12 +159,12 @@ discovery:
         - %appDir%
         
     type:
-        - App\Model\Abstract\ModelInterface
         - App\Controls\Abstract\AbstractControl
+        - App\Model\Abstract\AbstractModel
         
     enableInject:
-        - App\Model\Abstract\ModelInterface
         - App\Controls\Abstract\AbstractControl
+        - App\Model\Abstract\AbstractModel
 ```
 
 
@@ -191,10 +174,10 @@ use App\Core\Interfaces\Injectable;
 use App\Controls\Abstract\AbstractControl;
 use Nette\Application\UI\Control;
 
-class DebugService                             # pseudo-interface removed
+class TokenService                             # no pseudo-interface
 {}
 
-class AbstractControl extends Control          # pseudo-interface removed
+class AbstractControl extends Control          # no pseudo-interface
 {}
 ```
 
