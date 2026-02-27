@@ -35,6 +35,10 @@ final class ServiceDiscoveryExtension extends CompilerExtension
 
     private static ?string $currentMtimeHash = null;
 
+    private array $discoveredClasses = [];
+
+    private bool $beforeCompileDone = false;
+
     public function getConfigSchema(): Schema
     {
         return Expect::structure([
@@ -54,7 +58,6 @@ final class ServiceDiscoveryExtension extends CompilerExtension
          * @var stdClass $config
          */
         $config = $this->getConfig();
-        $definitions = [];
 
         if ($config->lazy && PHP_VERSION_ID < 80400) {
             throw new LogicException(self::class . ", configured lazy creation requires PHP 8.4 or newer. You are running " . PHP_VERSION);
@@ -74,7 +77,20 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         $attrSnapshot = $checker->computeAttrSnapshot($indexedClasses);
         $checker->saveSnapshot($config->in, $mtimeHash, $attrSnapshot['attrData'], $attrSnapshot['attrHash']);
 
-        foreach ($classes as $class) {
+        $this->discoveredClasses = $classes;
+    }
+
+    public function beforeCompile(): void
+    {
+        $builder = $this->getContainerBuilder();
+
+        /**
+         * @var stdClass $config
+         */
+        $config = $this->getConfig();
+        $definitions = [];
+
+        foreach ($this->discoveredClasses as $class) {
             try {
                 $rc = new ReflectionClass($class);
 
@@ -121,6 +137,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         }
 
         $this->definitions = $definitions;
+        $this->beforeCompileDone = true;
     }
 
     private function validateConfiguration(stdClass $config): void
@@ -236,6 +253,10 @@ final class ServiceDiscoveryExtension extends CompilerExtension
      */
     public function getServices(): array
     {
+        if (!$this->beforeCompileDone) {
+            throw new LogicException(self::class . ", method 'getServices()' called before beforeCompile() is done.");
+        }
+
         $result = [];
         foreach ($this->definitions as [$rc, $def]) {
             $result[] = $rc;
