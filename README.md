@@ -101,7 +101,7 @@ use App\Model\Abstract\AbstractModel;
 class ShiftControl extends AbstractControl 
 {
     public function __construct(
-        private readonly $model AbstractModel,
+        private readonly AbstractModel $model,
     )
     {}
 }
