@@ -185,7 +185,13 @@ class TokenService
 Go Event-Driven
 ---------------
 
-Service Discovery is a natural foundation for event-driven architecture. Pair it with `mildabre/event-dispatcher` - simple EventDispatcher that brings modern architecture possibilities. Automatic listener discovery, zero manual wiring, clean separation of concerns. A worthy plugin for modern Nette-based applications.
+Service Discovery is a natural foundation for event-driven architecture. Pair it with `mildabre/event-dispatcher` - simple EventDispatcher that brings modern architecture possibilities. 
+
+- automatic listener discovery
+- zero manual wiring
+- clean separation of concerns
+
+A worthy plugin for modern Nette-based applications.
 
 [mildabre/event-dispatcher](https://github.com/mildabre/event-dispatcher)
 
