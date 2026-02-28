@@ -110,6 +110,27 @@ Class excluded from auto-registration can still be instantiated manually via con
 
 Important: Manually-registered services in services.neon are not affected by the attribute!
 
+Lazy Services
+-------------
+
+Native PHP 8.4 lazy services are supported and can be enabled per discovery configuration:
+```neon
+discovery:
+    lazy: true          # requires PHP 8.4+
+```
+
+When disabled, lazy initialization is not used and PHP 8.1+ is sufficient:
+```neon
+discovery:
+    lazy: false         # PHP 8.1+
+```
+
+Individual services registered via `#[Service]` attribute can override the global lazy setting:
+```php
+#[Service(lazy: false)]
+class TokenManager
+{}
+```
 
 Enable Inject mode by Class Type
 --------------------------------
