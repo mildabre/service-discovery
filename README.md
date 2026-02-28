@@ -24,33 +24,18 @@ Add this hook to your Nette `Bootstrap.php`:
 
 ```php
 use Mildabre\ServiceDiscovery\DI\ServiceDiscoveryExtension;
-use Nette\Bootstrap\Configurator;
 
-class Bootstrap
+public function bootWebApplication(): Container
 {
-    private Configurator $configurator;
-    private string $rootDir;
-
-    public function __construct()
-    {
-        $this->rootDir = dirname(__DIR__);
-        $this->configurator = new Configurator();
-        $this->configurator->setTempDirectory($this->rootDir.'/temp');
-    }
-
-    public function bootWebApplication(): Container
-    {
-        $this->initializeEnvironment();
-        ServiceDiscoveryExtension::boot($this->rootDir.'/temp');    # add just before $configurator->createContainer()
-        return $this->configurator->createContainer();
-    }  
-    // .....
-}
+    $this->initializeEnvironment();
+    ServiceDiscoveryExtension::boot($this->rootDir.'/temp');    # add just before $configurator->createContainer()
+    return $this->configurator->createContainer();
+}  
 ```
 Configuration
 -------------
 
-Register the extension in your `common.neon`:
+Register the extension in your `common.neon` file:
 
 ```neon
 extensions:
@@ -82,7 +67,7 @@ Service Discovery by Attribute
 use Mildabre\ServiceDiscovery\Attributes\Service;
 
 #[Service]
-class TokenManager                # Registered with auto-generated service name
+class TokenManager
 {}
 
 ```
@@ -151,32 +136,26 @@ Migration from Search Section
 search:
     application:
         in: %appDir%
-        implements: App\Core\Interfaces\AsService       # pseudo-interface
+        implements: App\Core\Interfaces\AsService
     
     controls:
         in: '%appDir%/Controls'
         extends: App\Controls\Abstract\AbstractControl
 
-    model:
-        in: '%appDir%/Model'
-        implements: App\Model\Abstract\AbstractModel   
-    
 decorator:
-    App\Core\Interfaces\Injectable:                     # pseudo-interface
+    App\Core\Interfaces\Injectable:
         inject: true
 ```
 
 
 ```php
-use App\Core\Interfaces\AsService;
-use App\Core\Interfaces\Injectable;
-use App\Controls\Abstract\AbstractControl;
-use Nette\Application\UI\Control;
+use App\Core\DI\AsService;
+use App\Core\DI\Injectable;
 
-class TokenService implements AsService                             # pseudo-interface
+class TokenService implements AsService
 {}
 
-class AbstractControl extends Control implements Injectable          # pseudo-interface
+class AbstractControl extends Control implements Injectable
 {}
 ```
 
@@ -189,31 +168,24 @@ discovery:
         
     type:
         - App\Controls\Abstract\AbstractControl
-        - App\Model\Abstract\AbstractModel
         
     enableInject:
         - App\Controls\Abstract\AbstractControl
-        - App\Model\Abstract\AbstractModel
 ```
 
 
 ```php
-use App\Core\Interfaces\AsService;
-use App\Core\Interfaces\Injectable;
-use App\Controls\Abstract\AbstractControl;
-use Nette\Application\UI\Control;
+use Mildabre\ServiceDiscovery\Attributes\Service;
 
-class TokenService                             # no pseudo-interface
-{}
-
-class AbstractControl extends Control          # no pseudo-interface
+#[Service]
+class TokenService
 {}
 ```
 
 Go Event-Driven
-------------
+---------------
 
-Service Discovery is a natural foundation for event-driven architecture. Pair it with `mildabre/event-dispatcher` — a fresh and simple EventDispatcher that brings new possibilities to well-architected applications. Automatic listener discovery, zero manual wiring, clean separation of concerns. A worthy addon for modern Nette-based applications.
+Service Discovery is a natural foundation for event-driven architecture. Pair it with `mildabre/event-dispatcher` - simple EventDispatcher that brings modern architecture possibilities. Automatic listener discovery, zero manual wiring, clean separation of concerns. A worthy plugin for modern Nette-based applications.
 
 [mildabre/event-dispatcher](https://github.com/mildabre/event-dispatcher)
 
