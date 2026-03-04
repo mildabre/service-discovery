@@ -45,7 +45,7 @@ final class ServiceDiscoveryExtension extends CompilerExtension
             'in' => Expect::arrayOf('string')->default([]),
             'type' => Expect::arrayOf('string')->default([]),
             'enableInject' => Expect::arrayOf('string')->default([]),
-            'lazy' => Expect::bool()->required(),
+            'lazy' => Expect::bool()->default(false),
         ]);
     }
 
