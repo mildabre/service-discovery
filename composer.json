@@ -1,0 +1,23 @@
+{
+  "name": "bite/service-discovery",
+  "description": "Attribute based service discovery for Nette DI.",
+  "keywords": ["nette", "di", "service", "service discovery"],
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Miloš Brecher"
+    }
+  ],
+  "require": {
+    "php": ">=8.4",
+    "nette/di": "^3.2",
+    "nette/schema": "^1.3",
+    "nette/robot-loader": "^4.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Bite\\ServiceDiscovery\\": "src/"
+    }
+  }
+}
