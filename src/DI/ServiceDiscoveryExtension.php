@@ -71,7 +71,6 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 'type' => Expect::string()->required(),
                 'lifecycle' => Expect::anyOf('singleton', 'transient')->default('singleton'),
                 'lazy' => Expect::bool()->default(false),
-                'in' => Expect::arrayOf('string')->default([]),         // optional narrowing, if missing, inherits from top-level 'in'
             ]),
         );
     }
@@ -225,14 +224,35 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 continue;
             }
 
-            foreach ($groups as $group) {
-                if ($rc->isSubclassOf($group->type)) {
-                    $def = $builder->addDefinition(null)
-                        ->setType($class);
-                    $def->lazy = $group->lazy;
-                    $definitions[] = [$rc, $def, Lifecycle::from($group->lifecycle)];
-                    continue 2;
+            // Third pass matching: a class may legitimately implement/extend more than one
+            // group's type. This is fine as long as all matching groups agree on the effective
+            // registration (lifecycle + lazy) - anything else would make the outcome depend on
+            // group order in the config, which we refuse to resolve silently via priority.
+            $matchedGroups = array_filter($groups, fn($group) => $rc->isSubclassOf($group->type));
+
+            if (count($matchedGroups) > 1) {
+                $lifecycles = array_unique(array_map(fn($g) => $g->lifecycle, $matchedGroups));
+                $lazies = array_unique(array_map(fn($g) => $g->lazy, $matchedGroups));
+
+                if (count($lifecycles) > 1 || count($lazies) > 1) {
+                    throw new LogicException(sprintf(
+                        "%s matches multiple discovery groups with conflicting configuration (%s) — resolving this by group priority/order would make registration order-dependent. Align the groups' lifecycle/lazy settings, or add an explicit '#[Service]'/'#[Transient]' attribute to opt this class out of discovery groups.",
+                        $rc->name,
+                        implode(', ', array_map(
+                            fn($name, $g) => "$name (lifecycle: $g->lifecycle, lazy: " . ($g->lazy ? 'true' : 'false') . ')',
+                            array_keys($matchedGroups),
+                            $matchedGroups,
+                        )),
+                    ));
                 }
+            }
+
+            if ($matchedGroups !== []) {
+                $group = reset($matchedGroups);
+                $def = $builder->addDefinition(null)
+                    ->setType($class);
+                $def->lazy = $group->lazy;
+                $definitions[] = [$rc, $def, Lifecycle::from($group->lifecycle)];
             }
         }
 
@@ -297,17 +317,8 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         $groups = $this->getGroups($config);
 
         foreach ($groups as $groupName => $group) {
-            if (interface_exists($group->type)) {
-                throw new LogicException("Discovery group '$groupName': type $group->type is not allowed, interfaces are not supported here, use abstract class or register services manually.");
-            }
-            if (!class_exists($group->type)) {
-                throw new LogicException("Discovery group '$groupName': type $group->type must be an existing class.");
-            }
-
-            foreach ($group->in as $dir) {
-                if (!$this->isSubPathOfAny($dir, $config->in)) {
-                    throw new LogicException("Discovery group '$groupName': 'in' directory '$dir' is not a subdirectory of the top-level 'in' list, it would never be scanned.");
-                }
+            if (!class_exists($group->type) && !interface_exists($group->type)) {
+                throw new LogicException("Discovery group '$groupName': type $group->type must be an existing class or interface.");
             }
         }
 
@@ -324,28 +335,8 @@ final class ServiceDiscoveryExtension extends CompilerExtension
                 if ($typeA === $typeB) {
                     throw new LogicException("Discovery groups '$nameA' and '$nameB' use the same type $typeA, remove one of them.");
                 }
-
-                if (is_subclass_of($typeA, $typeB)) {
-                    throw new LogicException("Discovery group '$nameA' ($typeA) is a subtype of group '$nameB' ($typeB) — a discovered class could match both groups. Use a manual 'lifecycle:' override for the exception instead of overlapping groups.");
-                }
-
-                if (is_subclass_of($typeB, $typeA)) {
-                    throw new LogicException("Discovery group '$nameB' ($typeB) is a subtype of group '$nameA' ($typeA) — a discovered class could match both groups. Use a manual 'lifecycle:' override for the exception instead of overlapping groups.");
-                }
             }
         }
-    }
-
-    private function isSubPathOfAny(string $dir, array $parents): bool
-    {
-        $dir = rtrim($dir, '/\\');
-        foreach ($parents as $parent) {
-            $parent = rtrim($parent, '/\\');
-            if ($dir === $parent || str_starts_with($dir, $parent . '/') || str_starts_with($dir, $parent . '\\')) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private function applyLazy(ReflectionClass $rc, ServiceDefinition $def, stdClass $config): void
