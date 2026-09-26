@@ -524,8 +524,14 @@ final class ServiceDiscoveryExtension extends CompilerExtension
         return array_keys($this->factoryTargetClasses);
     }
 
-    public static function boot(string $tempDir): void
+    public static function boot(string $tempDir, bool $debugMode): void
     {
+        if (!$debugMode) {
+            self::$currentMtimeHash = null;
+            self::$booted = true;
+            return;
+        }
+
         $checker = new MetadataChecker($tempDir, self::CacheFolder);
         self::$currentMtimeHash = $checker->check();
         self::$booted = true;
