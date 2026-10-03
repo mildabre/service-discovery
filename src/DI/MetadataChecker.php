@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bite\ServiceDiscovery\DI;
 
+use Closure;
 use FilesystemIterator;
 use Bite\ServiceDiscovery\Attributes\EventListener;
 use Bite\ServiceDiscovery\Attributes\Excluded;
@@ -28,7 +29,8 @@ final class MetadataChecker
 
     private static ?string $controllerBase = null;
 
-    private static ?string $httpAccessBase = null;
+    /** @var (Closure(ReflectionClass, ReflectionMethod): bool)|null */
+    private static ?Closure $actionFilter = null;
 
     private readonly string $cacheDir;
 
@@ -39,10 +41,13 @@ final class MetadataChecker
         $this->cacheDir = $tempDir . $cacheFolder;
     }
 
-    public static function watchControllerMethods(string $controllerBase, string $httpAccessBase): void
+    /**
+     * @param Closure(ReflectionClass, ReflectionMethod): bool $actionFilter decides which methods are actions
+     */
+    public static function watchControllerMethods(string $controllerBase, Closure $actionFilter): void
     {
         self::$controllerBase = $controllerBase;
-        self::$httpAccessBase = $httpAccessBase;
+        self::$actionFilter = $actionFilter;
     }
 
     public function check(): ?string
@@ -72,16 +77,15 @@ final class MetadataChecker
         }
 
         foreach ($changedPaths as $file) {
-            if (!is_file($file) && !is_dir($file)) {              // really deleted file or directory
+            if (!is_file($file) && !is_dir($file)) {    // really deleted file or directory
                 $this->invalidateContainer();
                 return $this->computeMtimeHash($meta['dirs']);
             }
         }
 
-        $byPath = array_flip($indexed);                         // [path => className]
-        $attributesChanged = $this->attributesChanged($changedPaths, $byPath, $meta['attrData'], $meta['attrHash']);
+        $attributesChanged = $this->attributesChanged($changedPaths, $indexed, $meta['attrData'], $meta['attrHash']);
 
-        if (!$attributesChanged) {                              // second changed-files-snapshot check - slow but precise
+        if (!$attributesChanged) {                      // second changed-files-snapshot check - slow but precise
             return null;
         }
 
@@ -90,7 +94,7 @@ final class MetadataChecker
     }
 
     /**
-     * @param array<string, array<string, mixed>> $attrData [className => hashClassAttributes()]
+     * @param array<string, array<string, mixed>> $attrData [className => extractClassAttributes()]
      */
     public function saveSnapshot(array $scanDirs, string $mtimeHash, array $attrData, string $attrHash): void           // after DIC compilation
     {
@@ -143,15 +147,20 @@ final class MetadataChecker
      * Merges recomputed data into stored snapshot and compares resulting hash.
      *
      * @param list<string> $changedPaths
-     * @param array<string, string> $byPath [path => className]
+     * @param array<string, string> $indexed [className => path] from RobotLoader
      * @param array<string, mixed> $savedAttrData saved full snapshot
      */
     private function attributesChanged(
         array $changedPaths,
-        array $byPath,
+        array $indexed,
         array $savedAttrData,
         string $savedAttrHash,
     ): bool {
+        $byPath = [];                                   // [path => list<className>], one file may contain more classes
+        foreach ($indexed as $class => $path) {
+            $byPath[$path][] = $class;
+        }
+
         $updatedData = [];
 
         foreach ($changedPaths as $file) {
@@ -159,18 +168,19 @@ final class MetadataChecker
                 continue;
             }
 
-            $class = $byPath[$file] ?? null;
-            if ($class === null) {                  // PHP file in scan dirs but not in RobotLoader cache => new class not yet indexed => invalidate
+            if (!isset($byPath[$file])) {               // PHP file in scan dirs but not in RobotLoader cache => new class not yet indexed => invalidate
                 return true;
             }
 
-            try {
-                $rc = new ReflectionClass($class);
-            } catch (ReflectionException) {
-                continue;
-            }
+            foreach ($byPath[$file] as $class) {
+                try {
+                    $rc = new ReflectionClass($class);
+                } catch (ReflectionException) {
+                    return true;                        // cannot verify => invalidate, never silently ignore
+                }
 
-            $updatedData[$class] = $this->extractClassAttributes($rc);
+                $updatedData[$class] = $this->extractClassAttributes($rc);
+            }
         }
 
         if ($updatedData === []) {
@@ -200,7 +210,8 @@ final class MetadataChecker
             }
         }
 
-        if (self::$controllerBase !== null && $rc->isSubclassOf(self::$controllerBase)) {
+        if (self::$controllerBase !== null && self::$actionFilter !== null && $rc->isSubclassOf(self::$controllerBase)
+        ) {
             $methods = $this->extractControllerMethods($rc);
             if ($methods !== []) {
                 $data['methods'] = $methods;
@@ -211,6 +222,8 @@ final class MetadataChecker
     }
 
     /**
+     * Which methods are actions is decided solely by the injected $actionFilter (single source of truth).
+     *
      * @return array<string, array{attrs: list<string>, params: list<string>}>
      */
     private function extractControllerMethods(ReflectionClass $rc): array
@@ -218,20 +231,9 @@ final class MetadataChecker
         $methods = [];
 
         foreach ($rc->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->isStatic()) {
+            if (!(self::$actionFilter)($rc, $method)) {
                 continue;
             }
-
-            if ($method->getDeclaringClass()->name !== $rc->name) {
-                continue;
-            }
-
-            $httpAttrs = $method->getAttributes(self::$httpAccessBase, ReflectionAttribute::IS_INSTANCEOF);
-            if ($httpAttrs === []) {
-                continue;
-            }
-
-            $attrs = array_map(fn($a) => $a->getName(), $httpAttrs);
 
             $params = [];
             foreach ($method->getParameters() as $param) {
@@ -241,8 +243,8 @@ final class MetadataChecker
                 }
             }
 
-            $methods[$method->getName()] = [
-                'attrs'  => $attrs,
+            $methods[$method->name] = [
+                'attrs'  => array_map(fn(ReflectionAttribute $a) => $a->getName(), $method->getAttributes()),
                 'params' => $params,
             ];
         }
@@ -261,7 +263,7 @@ final class MetadataChecker
             }
         }
 
-        foreach (array_keys($savedMtimes) as $path) {               // deleted files or directories
+        foreach (array_keys($savedMtimes) as $path) {           // deleted files or directories
             if (!isset($current[$path])) {
                 $changed[] = $path;
             }
