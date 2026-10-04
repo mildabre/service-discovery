@@ -150,12 +150,8 @@ final class MetadataChecker
      * @param array<string, string> $indexed [className => path] from RobotLoader
      * @param array<string, mixed> $savedAttrData saved full snapshot
      */
-    private function attributesChanged(
-        array $changedPaths,
-        array $indexed,
-        array $savedAttrData,
-        string $savedAttrHash,
-    ): bool {
+    private function attributesChanged(array $changedPaths, array $indexed, array $savedAttrData, string $savedAttrHash): bool
+    {
         $byPath = [];                                   // [path => list<className>], one file may contain more classes
         foreach ($indexed as $class => $path) {
             $byPath[$path][] = $class;
@@ -197,11 +193,11 @@ final class MetadataChecker
     /**
      * @return array<string, mixed>
      */
-    private function extractClassAttributes(ReflectionClass $rc): array
+    private function extractClassAttributes(ReflectionClass $class): array
     {
         $data = [];
 
-        foreach ($rc->getAttributes() as $attribute) {
+        foreach ($class->getAttributes() as $attribute) {
             if (in_array($attribute->getName(), self::WatchedClassAttributes, true)) {
                 $data['class'][] = [
                     'name' => $attribute->getName(),
@@ -210,9 +206,8 @@ final class MetadataChecker
             }
         }
 
-        if (self::$controllerBase !== null && self::$actionFilter !== null && $rc->isSubclassOf(self::$controllerBase)
-        ) {
-            $methods = $this->extractControllerMethods($rc);
+        if (self::$controllerBase !== null && self::$actionFilter !== null && $class->isSubclassOf(self::$controllerBase)) {
+            $methods = $this->extractControllerMethods($class);
             if ($methods !== []) {
                 $data['methods'] = $methods;
             }
